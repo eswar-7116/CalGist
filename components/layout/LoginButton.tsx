@@ -66,7 +66,6 @@ export default function LoginButton() {
       redirect("/");
     } catch (error) {
       console.error("Logout error:", error);
-      redirect("/auth/error");
     }
   };
 
