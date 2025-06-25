@@ -55,6 +55,7 @@ export default function LoginButton() {
       });
     } catch (error) {
       console.error("Login error:", error);
+      redirect("/auth/error");
     }
   };
 
@@ -65,6 +66,7 @@ export default function LoginButton() {
       redirect("/");
     } catch (error) {
       console.error("Logout error:", error);
+      redirect("/auth/error");
     }
   };
 
