@@ -36,8 +36,6 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user }, error
   } = await supabase.auth.getUser()
-  // console.log(user)
-  console.log(error)
 
   if (
     !user && request.nextUrl.pathname.startsWith('/dashboard')
