@@ -1,36 +1,94 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 📅 CalGist: AI-Powered Calendar Summarizer
 
-## Getting Started
+CalGist is an event summarizing assistant that connects with your Google Calendar, generates helpful AI summaries for your upcoming events, and displays everything in a beautiful, easy-to-navigate dashboard.
 
-First, run the development server:
+> 🔗 Live Demo: [CalGist](https://cal-gist.vercel.app)
+
+---
+
+## 🚀 Features
+
+- 👤 **User Authentication**  
+  Simple sign-up/login with Supabase Auth.
+
+- 🔗 **Google Calendar Integration**  
+  Securely connects your Google account and fetches upcoming events.
+
+- 📅 **Upcoming Events View**  
+  Lists your scheduled events from Google Calendar with live sync.
+
+- 🤖 **AI-Powered Summaries**  
+  Uses Gemini (Google AI) to generate smart, concise summaries for each event.
+
+- ✨ **Clean Dashboard**  
+  Organized view of your events and summaries in one place.
+
+- 🔁 **Regenerate Summary Button**  
+  Instantly generate a fresh summary for any event.
+
+- 📋 **Copy to Clipboard**  
+  Quickly copy any summary with a single click.
+
+---
+
+## 🧑‍💻 Tech Stack
+
+- **Next.js** + **TypeScript**
+- **Supabase** (Auth + Database)
+- **Google Calendar API**
+- **Google Gemini API** (AI summaries)
+- **Tailwind CSS + ShadCN** for UI
+- **Vercel** for deployment
+
+---
+
+## 🛠️ Local Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Clone the repo
+git clone https://github.com/eswar-7116/CalGist.git
+cd CalGist
+
+# Install dependencies
+npm install
+
+# Create .env.local and fill with required values
+cp .env.example .env
+
+# Run locally
+npm dev
+````
+
+---
+
+## 🔐 Environment Variables
+
+Make sure to set these in `.env`:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URI=
+
+GEMINI_API_KEY=
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📄 Privacy Policy
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+You can view the privacy policy here:
+🔗 [CalGist Privacy Policy](https://cal-gist.vercel.app/privacy-policy)
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 📄 License
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+MIT – feel free to use, fork, and build on top of it!
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Made with ❤️ by [Eswar Dudi](https://github.com/eswar-7116)
