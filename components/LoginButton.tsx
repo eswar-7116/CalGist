@@ -48,8 +48,6 @@ export default function LoginButton() {
 
   const handleGoogleLogin = async () => {
     try {
-      const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`;
-
       await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
@@ -57,7 +55,7 @@ export default function LoginButton() {
             access_type: "offline",
             prompt: "consent",
           },
-          redirectTo
+          redirectTo: "/auth/callback"
         },
       });
     } catch (error) {
