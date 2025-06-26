@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -22,24 +22,26 @@ export default function LoginButton() {
   const [loading, setLoading] = useState(true);
 
   const router = useRouter();
-  
+
   const supabase = createClient();
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       setUser(user);
       setLoading(false);
     };
 
     getUser();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
 
     return () => subscription.unsubscribe();
   }, [supabase.auth]);
@@ -53,7 +55,7 @@ export default function LoginButton() {
             access_type: "offline",
             prompt: "consent",
           },
-          redirectTo: `${location.origin}/auth/callback`
+          redirectTo: `${location.origin}/auth/callback`,
         },
       });
     } catch (error) {
@@ -74,8 +76,8 @@ export default function LoginButton() {
 
   if (loading) {
     return (
-      <Button 
-        disabled 
+      <Button
+        disabled
         className="cursor-not-allowed rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
       >
         Loading...
@@ -84,6 +86,7 @@ export default function LoginButton() {
   }
 
   if (user) {
+    // Log out button
     return (
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
@@ -96,6 +99,10 @@ export default function LoginButton() {
             <DialogTitle className="text-center text-xl font-semibold">
               Log out
             </DialogTitle>
+            <p className="text-center text-sm text-muted-foreground">
+              Logged in as{" "}
+              <span className="font-medium text-foreground">{user.email}</span>
+            </p>
             <DialogDescription className="text-center text-muted-foreground">
               Are you sure you want to log out?
             </DialogDescription>
@@ -123,6 +130,7 @@ export default function LoginButton() {
   }
 
   return (
+    // Log in button
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button className="cursor-pointer rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto">
