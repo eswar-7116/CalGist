@@ -115,14 +115,13 @@ export function EventCard({
         return;
       }
 
-      const { error: saveErr } = await supabase.from("summaries").upsert({
-        user_id: user.id,
-        event_id: event.id,
+      const { error: saveErr } = await supabase.from("summaries").update({
         summary: newSummary,
         created_at: new Date().toISOString(),
-      });
+      }).eq("event_id", event.id);
 
       if (saveErr) {
+        console.error("Failed to save regenerated summary:", saveErr.message);
         toast.error("Failed to save regenerated summary.");
         return;
       }
