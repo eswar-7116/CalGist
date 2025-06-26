@@ -55,7 +55,7 @@ export default function LoginButton() {
             access_type: "offline",
             prompt: "consent",
           },
-          redirectTo: "/auth/callback"
+          redirectTo: `${window.location.origin}/auth/callback`,
         },
       });
     } catch (error) {
