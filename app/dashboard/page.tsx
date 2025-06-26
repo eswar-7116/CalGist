@@ -1,284 +1,147 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { connectGoogleCalendar, getUserTokens } from "@/lib/google/actions";
-import createOAuth2Client from "@/lib/google/client";
-import { createClient } from "@/lib/supabase/client"
-import { User } from "@supabase/supabase-js";
-import { calendar_v3, google } from "googleapis";
 import { useEffect, useState } from "react";
-import { Calendar, Clock, MapPin, Users, RefreshCw } from "lucide-react";
+import { User } from "@supabase/supabase-js";
+import { calendar_v3 } from "googleapis";
+import { createClient } from "@/lib/supabase/client";
+import { connectGoogleCalendar, getUserTokens } from "@/lib/google/actions";
+
+import { ConnectButton } from "@/components/dashboard/ConnectButton";
+import { EventList } from "@/components/dashboard/EventList";
+import { ErrorBanner } from "@/components/dashboard/ErrorBanner";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function DashboardPage() {
-    const [user, setUser] = useState<User | null>(null);
-    const [events, setEvents] = useState<calendar_v3.Schema$Event[] | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [isConnected, setIsConnected] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [events, setEvents] = useState<calendar_v3.Schema$Event[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-    // Check if user has Google Calendar tokens
-    const checkGoogleConnection = async (userId: string) => {
-      try {
-        const tokens = await getUserTokens(userId);
-        setIsConnected(!!tokens);
-        return !!tokens;
-      } catch (error) {
-        console.error("Error checking Google connection:", error);
-        setIsConnected(false);
-        return false;
-      }
-    };
+  const formatDate = (dateString?: string | null) => {
+    if (!dateString) return "No date";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      weekday: "short",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
 
-    // Fetch events from Google Calendar
-    const fetchEvents = async () => {
-      setLoading(true);
+  const formatTime = (dateString?: string | null) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+
+  const isAllDayEvent = (event: calendar_v3.Schema$Event) => {
+    return !!event.start?.date && !event.start?.dateTime;
+  };
+
+  const checkGoogleConnection = async (userId: string) => {
+    try {
+      const tokens = await getUserTokens(userId);
+      const connected = !!tokens;
+      setIsConnected(connected);
+      return connected;
+    } catch (err) {
+      console.error("Error checking Google connection:", err);
+      setIsConnected(false);
+      return false;
+    }
+  };
+
+  const fetchEvents = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/google/events");
+      if (!res.ok) throw new Error(`Status: ${res.status}`);
+      const json = await res.json();
+      setEvents(json.events || []);
+    } catch (err) {
+      console.error("Failed to fetch events", err);
+      setError("Failed to fetch events. Please try again.");
+      setEvents([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConnect = async () => {
+    try {
       setError(null);
-      try {
-        const res = await fetch("/api/google/events");
-        
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        
-        const response = await res.json();
+      await connectGoogleCalendar();
+      if (user?.id) {
+        const connected = await checkGoogleConnection(user.id);
+        if (connected) await fetchEvents();
+      }
+    } catch (err) {
+      console.error("Connection error", err);
+      setError("Failed to connect to Google Calendar. Please try again.");
+    }
+  };
 
-        if (response && response.events) {
-          setEvents(response.events);
-        } else {
-          console.log("Unexpected response:", response);
-          setEvents([]);
-        }
-      } catch (error) {
-        console.error("Error fetching events:", error);
-        setError("Failed to fetch events. Please try again.");
-        setEvents([]);
-      } finally {
-        setLoading(false);
+  useEffect(() => {
+    const initialize = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+
+      if (user) {
+        const connected = await checkGoogleConnection(user.id);
+        if (connected) await fetchEvents();
       }
     };
+    initialize();
+  }, []);
 
-    // Connect to Google Calendar and fetch events
-    const handleConnect = async () => {
-      try {
-        setError(null);
-        await connectGoogleCalendar();
-        if (user?.id) {
-          const connected = await checkGoogleConnection(user.id);
-          if (connected)
-            await fetchEvents();
-        }
-      } catch (error) {
-        console.error("Error connecting to Google Calendar:", error);
-        setError("Failed to connect to Google Calendar. Please try again.");
-      }
-    };
+  return (
+    <main className="container mx-auto p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <ConnectButton
+          isConnected={isConnected}
+          loading={loading}
+          onConnect={handleConnect}
+          onRefresh={fetchEvents}
+        />
+      </div>
 
-    useEffect(() => {
-      const initializeDashboard = async () => {
-        // Get the user
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        setUser(user);
+      {error && <ErrorBanner message={error} />}
 
-        if (user) {
-          // Check if Google Calendar is already connected
-          const connected = await checkGoogleConnection(user.id);
-          
-          if (connected) {
-            // Fetch events
-            await fetchEvents();
-          }
-        }
-      };
-
-      initializeDashboard();
-    }, []);
-
-    const formatDate = (dateString: string | null | undefined) => {
-      if (!dateString) return "No date";
-      
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', {
-        weekday: 'short',
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      });
-    };
-
-    const formatTime = (dateString: string | null | undefined) => {
-      if (!dateString) return "";
-      
-      const date = new Date(dateString);
-      return date.toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-      });
-    };
-
-    const isAllDayEvent = (event: calendar_v3.Schema$Event) => {
-      return event.start?.date && !event.start?.dateTime;
-    };
-
-    return (
-      <main className="container mx-auto p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <div className="flex gap-2">
-            {!isConnected ? (
-              <Button onClick={handleConnect} disabled={loading}>
-                <Calendar className="w-4 h-4 mr-2" />
-                Connect Google Calendar
-              </Button>
-            ) : (
-              <Button onClick={fetchEvents} disabled={loading} variant="outline">
-                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                {loading ? "Refreshing..." : "Refresh Events"}
-              </Button>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            Upcoming Events
+            {events && (
+              <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
+                {events.length}
+              </span>
             )}
-          </div>
-        </div>
-
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-red-700 text-sm">{error}</p>
-          </div>
-        )}
-
-        <div className="grid gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-5 h-5" />
-                Upcoming Events
-                {events && (
-                  <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
-                    {events.length}
-                  </span>
-                )}
-                {isConnected && (
-                  <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                    Connected
-                  </span>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {!isConnected ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>Connect your Google Calendar to view events</p>
-                  <p className="text-sm mt-2">Click "Connect Google Calendar" to get started</p>
-                </div>
-              ) : !events && loading ? (
-                <div className="text-center py-8 text-gray-500">
-                  <RefreshCw className="w-12 h-12 mx-auto mb-4 opacity-50 animate-spin" />
-                  <p>Loading your calendar events...</p>
-                </div>
-              ) : !events ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>Unable to load events</p>
-                  <p className="text-sm mt-2">Try refreshing or check your connection</p>
-                </div>
-              ) : !Array.isArray(events) || events.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>No upcoming events found</p>
-                  <p className="text-sm mt-2">Your calendar appears to be empty</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {Array.isArray(events) && events.map((event, index) => (
-                    <div
-                      key={event.id || index}
-                      className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-lg">
-                            {event.summary || "Untitled Event"}
-                          </h3>
-                          
-                          {event.description && (
-                            <p className="text-gray-600 mt-1 text-sm">
-                              {event.description.length > 100
-                                ? `${event.description.substring(0, 100)}...`
-                                : event.description}
-                            </p>
-                          )}
-
-                          <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-gray-500">
-                            <div className="flex items-center gap-1">
-                              <Clock className="w-4 h-4" />
-                              {isAllDayEvent(event) ? (
-                                <span>All day - {formatDate(event.start?.date)}</span>
-                              ) : (
-                                <span>
-                                  {formatDate(event.start?.dateTime)} at {formatTime(event.start?.dateTime)}
-                                  {event.end?.dateTime && 
-                                    ` - ${formatTime(event.end.dateTime)}`
-                                  }
-                                </span>
-                              )}
-                            </div>
-
-                            {event.location && (
-                              <div className="flex items-center gap-1">
-                                <MapPin className="w-4 h-4" />
-                                <span className="truncate max-w-xs">
-                                  {event.location}
-                                </span>
-                              </div>
-                            )}
-
-                            {event.attendees && event.attendees.length > 0 && (
-                              <div className="flex items-center gap-1">
-                                <Users className="w-4 h-4" />
-                                <span>{event.attendees.length} attendees</span>
-                              </div>
-                            )}
-                          </div>
-
-                          {event.htmlLink && (
-                            <div className="mt-2">
-                              <a
-                                href={event.htmlLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 text-sm underline"
-                              >
-                                View in Google Calendar
-                              </a>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="ml-4">
-                          {event.status && (
-                            <span
-                              className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                event.status === 'confirmed'
-                                  ? 'bg-green-100 text-green-800'
-                                  : event.status === 'tentative'
-                                  ? 'bg-yellow-100 text-yellow-800'
-                                  : 'bg-gray-100 text-gray-800'
-                              }`}
-                            >
-                              {event.status}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </main>
-    )
+            {isConnected && (
+              <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                Connected
+              </span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <EventList
+            events={events}
+            loading={loading}
+            isConnected={isConnected}
+            formatDate={formatDate}
+            formatTime={formatTime}
+            isAllDayEvent={isAllDayEvent}
+          />
+        </CardContent>
+      </Card>
+    </main>
+  );
 }
