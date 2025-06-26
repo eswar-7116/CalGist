@@ -1,9 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { Hero } from "@/components/layout/Hero";
-import { Features } from "@/components/layout/Features";
-import { CTA } from "@/components/layout/CTA";
-import { Footer } from "@/components/layout/Footer";
+import { Hero } from "@/components/home/Hero";
+import { Features } from "@/components/home/Features";
+import { CTA } from "@/components/home/CTA";
+import { Footer } from "@/components/home/Footer";
 
 export default async function Home() {
   const supabase = await createClient();
