@@ -13,13 +13,16 @@ import {
 import GoogleIcon from "../icons/GoogleIcon";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 
 export default function LoginButton() {
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const router = useRouter();
+  
   const supabase = createClient();
 
   useEffect(() => {
@@ -55,7 +58,7 @@ export default function LoginButton() {
       });
     } catch (error) {
       console.error("Login error:", error);
-      redirect("/auth/error");
+      router.push("/auth/error");
     }
   };
 
@@ -63,7 +66,7 @@ export default function LoginButton() {
     try {
       await supabase.auth.signOut();
       setOpen(false);
-      redirect("/");
+      router.push("/");
     } catch (error) {
       console.error("Logout error:", error);
     }
