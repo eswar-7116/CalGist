@@ -15,7 +15,7 @@ export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [events, setEvents] = useState<calendar_v3.Schema$Event[] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const formatDate = (dateString?: string | null) => {
