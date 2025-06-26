@@ -44,6 +44,7 @@ export async function fetchGoogleCalendarEvents(tokens: any) {
   const res = await calendar.events.list({
     calendarId: "primary",
     timeMin: new Date().toISOString(),
+    singleEvents: true,
     orderBy: "startTime",
   });
 
