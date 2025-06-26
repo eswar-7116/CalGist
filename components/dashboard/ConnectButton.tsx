@@ -12,7 +12,7 @@ type Props = {
 
 export function ConnectButton({ isConnected, loading, onConnect, onRefresh }: Props) {
   return isConnected ? (
-    <Button onClick={onRefresh} disabled={loading} variant="outline">
+    <Button onClick={onRefresh} disabled={loading} variant="outline" className="cursor-pointer">
       <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
       {loading ? "Refreshing..." : "Refresh Events"}
     </Button>
