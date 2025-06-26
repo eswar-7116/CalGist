@@ -96,6 +96,7 @@ export default function DashboardPage() {
       if (user) {
         const connected = await checkGoogleConnection(user.id);
         if (connected) await fetchEvents();
+        setLoading(false);
       }
     };
     initialize();
