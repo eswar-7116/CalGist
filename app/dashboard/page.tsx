@@ -90,7 +90,9 @@ export default function DashboardPage() {
   useEffect(() => {
     const initialize = async () => {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       setUser(user);
 
       if (user) {
@@ -105,7 +107,7 @@ export default function DashboardPage() {
   return (
     <main className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <h1 className="text-3xl font-bold hidden md:block">Dashboard</h1>
         <ConnectButton
           isConnected={isConnected}
           loading={loading}
