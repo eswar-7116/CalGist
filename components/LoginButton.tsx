@@ -48,6 +48,11 @@ export default function LoginButton() {
 
   const handleGoogleLogin = async () => {
     try {
+      const redirectTo =
+        process.env.NODE_ENV === "development"
+          ? "http://localhost:3000/auth/callback"
+          : "https://calgist.vercel.app/auth/callback";
+
       await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
@@ -55,7 +60,7 @@ export default function LoginButton() {
             access_type: "offline",
             prompt: "consent",
           },
-          redirectTo: `${location.origin}/auth/callback`,
+          redirectTo
         },
       });
     } catch (error) {
