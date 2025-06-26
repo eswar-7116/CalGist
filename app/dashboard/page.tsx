@@ -2,30 +2,38 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { connectGoogleCalendar } from "@/lib/google/actions";
+import { connectGoogleCalendar, getUserTokens } from "@/lib/google/actions";
+import createOAuth2Client from "@/lib/google/client";
 import { createClient } from "@/lib/supabase/client"
 import { User } from "@supabase/supabase-js";
-import { calendar_v3 } from "googleapis";
+import { calendar_v3, google } from "googleapis";
 import { useEffect, useState } from "react";
-import { Calendar, Clock, MapPin, Users } from "lucide-react";
+import { Calendar, Clock, MapPin, Users, RefreshCw } from "lucide-react";
 
 export default function DashboardPage() {
     const [user, setUser] = useState<User | null>(null);
     const [events, setEvents] = useState<calendar_v3.Schema$Event[] | null>(null);
     const [loading, setLoading] = useState(false);
+    const [isConnected, setIsConnected] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-      const fetchUser = async () => {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        setUser(user);
-      };
+    // Check if user has Google Calendar tokens
+    const checkGoogleConnection = async (userId: string) => {
+      try {
+        const tokens = await getUserTokens(userId);
+        setIsConnected(!!tokens);
+        return !!tokens;
+      } catch (error) {
+        console.error("Error checking Google connection:", error);
+        setIsConnected(false);
+        return false;
+      }
+    };
 
-      fetchUser();
-    }, []);
-
-    const handleGetEvents = async () => {
+    // Fetch events from Google Calendar
+    const fetchEvents = async () => {
       setLoading(true);
+      setError(null);
       try {
         const res = await fetch("/api/google/events");
         
@@ -35,7 +43,7 @@ export default function DashboardPage() {
         
         const response = await res.json();
 
-        if (response) {
+        if (response && response.events) {
           setEvents(response.events);
         } else {
           console.log("Unexpected response:", response);
@@ -43,11 +51,49 @@ export default function DashboardPage() {
         }
       } catch (error) {
         console.error("Error fetching events:", error);
+        setError("Failed to fetch events. Please try again.");
         setEvents([]);
       } finally {
         setLoading(false);
       }
-    }
+    };
+
+    // Connect to Google Calendar and fetch events
+    const handleConnect = async () => {
+      try {
+        setError(null);
+        await connectGoogleCalendar();
+        if (user?.id) {
+          const connected = await checkGoogleConnection(user.id);
+          if (connected)
+            await fetchEvents();
+        }
+      } catch (error) {
+        console.error("Error connecting to Google Calendar:", error);
+        setError("Failed to connect to Google Calendar. Please try again.");
+      }
+    };
+
+    useEffect(() => {
+      const initializeDashboard = async () => {
+        // Get the user
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        setUser(user);
+
+        if (user) {
+          // Check if Google Calendar is already connected
+          const connected = await checkGoogleConnection(user.id);
+          
+          if (connected) {
+            // Fetch events
+            await fetchEvents();
+          }
+        }
+      };
+
+      initializeDashboard();
+    }, []);
 
     const formatDate = (dateString: string | null | undefined) => {
       if (!dateString) return "No date";
@@ -81,16 +127,25 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Dashboard</h1>
           <div className="flex gap-2">
-            <Button onClick={async () => await connectGoogleCalendar()}>
-              <Calendar className="w-4 h-4 mr-2" />
-              Connect Google Calendar
-            </Button>
-            <Button onClick={handleGetEvents} disabled={loading}>
-              <Clock className="w-4 h-4 mr-2" />
-              {loading ? "Loading..." : "Get Events"}
-            </Button>
+            {!isConnected ? (
+              <Button onClick={handleConnect} disabled={loading}>
+                <Calendar className="w-4 h-4 mr-2" />
+                Connect Google Calendar
+              </Button>
+            ) : (
+              <Button onClick={fetchEvents} disabled={loading} variant="outline">
+                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                {loading ? "Refreshing..." : "Refresh Events"}
+              </Button>
+            )}
           </div>
         </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-red-700 text-sm">{error}</p>
+          </div>
+        )}
 
         <div className="grid gap-6">
           <Card>
@@ -103,25 +158,36 @@ export default function DashboardPage() {
                     {events.length}
                   </span>
                 )}
+                {isConnected && (
+                  <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                    Connected
+                  </span>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {!events ? (
+              {!isConnected ? (
                 <div className="text-center py-8 text-gray-500">
                   <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>Click "Get Events" to load your calendar events</p>
-                  <p className="text-sm mt-2">Make sure you've connected your Google Calendar first</p>
+                  <p>Connect your Google Calendar to view events</p>
+                  <p className="text-sm mt-2">Click "Connect Google Calendar" to get started</p>
+                </div>
+              ) : !events && loading ? (
+                <div className="text-center py-8 text-gray-500">
+                  <RefreshCw className="w-12 h-12 mx-auto mb-4 opacity-50 animate-spin" />
+                  <p>Loading your calendar events...</p>
+                </div>
+              ) : !events ? (
+                <div className="text-center py-8 text-gray-500">
+                  <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>Unable to load events</p>
+                  <p className="text-sm mt-2">Try refreshing or check your connection</p>
                 </div>
               ) : !Array.isArray(events) || events.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>No events found</p>
-                  <p className="text-sm mt-2">
-                    {!Array.isArray(events) 
-                      ? "Check the browser console for API response details"
-                      : "Try connecting your Google Calendar or check your calendar for upcoming events"
-                    }
-                  </p>
+                  <p>No upcoming events found</p>
+                  <p className="text-sm mt-2">Your calendar appears to be empty</p>
                 </div>
               ) : (
                 <div className="space-y-4">
