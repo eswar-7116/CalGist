@@ -51,7 +51,7 @@ export default function LoginButton() {
       const redirectTo =
         process.env.NODE_ENV === "development"
           ? "http://localhost:3000/auth/callback"
-          : "https://calgist.vercel.app/auth/callback";
+          : `${process.env.PRODUCTION_ORIGIN!}/auth/callback`;
 
       await supabase.auth.signInWithOAuth({
         provider: "google",
