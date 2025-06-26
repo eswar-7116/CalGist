@@ -49,7 +49,7 @@ export default function LoginButton() {
   const handleGoogleLogin = async () => {
     try {
       const redirectTo =
-        process.env.NODE_ENV === "development"
+        process.env.NEXT_ENV === "development"
           ? "http://localhost:3000/auth/callback"
           : `${process.env.PRODUCTION_ORIGIN!}/auth/callback`;
 

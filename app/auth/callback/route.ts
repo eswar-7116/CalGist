@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const origin = process.env.NODE_ENV === "development"
+  const origin = process.env.NEXT_ENV === "development"
   ? "http://localhost:3000"
   : process.env.PRODUCTION_ORIGIN!;
 
