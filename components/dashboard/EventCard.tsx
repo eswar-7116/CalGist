@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { calendar_v3 } from "googleapis";
-import { generateSummary } from "@/lib/ai/actions";
 import { EventHeader } from "@/components/dashboard/event_card/EventHeader";
 import { EventDescription } from "@/components/dashboard/event_card/EventDescription";
 import { EventMeta } from "@/components/dashboard/event_card/EventMeta";
@@ -27,7 +26,7 @@ async function getSummary(event: calendar_v3.Schema$Event) {
       .eq("event_id", event.id)
       .single();
 
-    if (error?.code === "PGRST116" || !data) {
+    if (error?.code === "PGRST116" && !data) {
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -39,11 +38,11 @@ async function getSummary(event: calendar_v3.Schema$Event) {
       const response = await fetch("/api/gen-summary", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ event })
+        body: JSON.stringify({ event }),
       });
-      const { summary } = await response.json()
+      const { summary } = await response.json();
       if (!summary) {
         console.error("Summary generation failed");
         toast.error("Summary generation failed");
@@ -88,6 +87,56 @@ export function EventCard({
   const [summary, setSummary] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const regenerateSummary = async () => {
+    try {
+      setLoading(true);
+      const supabase = createClient();
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("You must be logged in.");
+        return;
+      }
+
+      const response = await fetch("/api/gen-summary", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ event }),
+      });
+
+      const { summary: newSummary } = await response.json();
+
+      if (!newSummary) {
+        toast.error("Summary regeneration failed.");
+        return;
+      }
+
+      const { error: saveErr } = await supabase.from("summaries").upsert({
+        user_id: user.id,
+        event_id: event.id,
+        summary: newSummary,
+        created_at: new Date().toISOString(),
+      });
+
+      if (saveErr) {
+        toast.error("Failed to save regenerated summary.");
+        return;
+      }
+
+      toast.success("Summary regenerated!");
+      setSummary(newSummary);
+    } catch (err) {
+      console.error("Error regenerating summary:", err);
+      toast.error("Unexpected error during regeneration.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDialogOpenChange = async (open: boolean) => {
     setSummaryDialogOpen(open);
     if (open && !summary) {
@@ -118,6 +167,7 @@ export function EventCard({
             loading={loading}
             open={summaryDialogOpen}
             setOpen={handleDialogOpenChange}
+            onRegenerate={regenerateSummary}
           />
         </div>
       </div>
