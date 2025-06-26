@@ -48,10 +48,7 @@ export default function LoginButton() {
 
   const handleGoogleLogin = async () => {
     try {
-      const redirectTo =
-        process.env.NEXT_ENV === "development"
-          ? "http://localhost:3000/auth/callback"
-          : `${process.env.PRODUCTION_ORIGIN!}/auth/callback`;
+      const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`;
 
       await supabase.auth.signInWithOAuth({
         provider: "google",
