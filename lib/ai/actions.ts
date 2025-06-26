@@ -34,7 +34,7 @@ Event Details:
 
 export async function generateSummary(event: GCalEvent) {
   const { text: summary } = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
+    model: "gemini-2.5-flash",
     contents: createPromptContents(event),
   });
 
