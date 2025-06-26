@@ -1,5 +1,14 @@
+"use client";
+
+import { useState } from "react";
 import { calendar_v3 } from "googleapis";
-import { Clock, MapPin, Users } from "lucide-react";
+import { generateSummary } from "@/lib/ai/actions";
+import { EventHeader } from "@/components/dashboard/event_card/EventHeader";
+import { EventDescription } from "@/components/dashboard/event_card/EventDescription";
+import { EventMeta } from "@/components/dashboard/event_card/EventMeta";
+import { EventActions } from "@/components/dashboard/event_card/EventActions";
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
 
 type Props = {
   event: calendar_v3.Schema$Event;
@@ -8,78 +17,109 @@ type Props = {
   isAllDayEvent: (e: calendar_v3.Schema$Event) => boolean;
 };
 
-export function EventCard({ event, formatDate, formatTime, isAllDayEvent }: Props) {
+async function getSummary(event: calendar_v3.Schema$Event) {
+  try {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+      .from("summaries")
+      .select("summary")
+      .eq("event_id", event.id)
+      .single();
+
+    if (error?.code === "PGRST116" || !data) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        console.error("Unauthorized generation");
+        return null;
+      }
+
+      const response = await fetch("/api/gen-summary", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ event })
+      });
+      const { summary } = await response.json()
+      if (!summary) {
+        console.error("Summary generation failed");
+        toast.error("Summary generation failed");
+        return null;
+      }
+
+      const { error } = await supabase.from("summaries").insert([
+        {
+          user_id: user.id,
+          event_id: event.id,
+          summary: summary,
+          created_at: new Date().toISOString(),
+        },
+      ]);
+      if (error) {
+        console.error("Failed to save summary:", error);
+        toast.error("Failed to save summary");
+      }
+
+      return summary;
+    }
+
+    if (error) {
+      console.error("Error fetching summary:", error);
+      return null;
+    }
+
+    return data.summary;
+  } catch (err) {
+    console.error("Unexpected error in getSummary:", err);
+    return null;
+  }
+}
+
+export function EventCard({
+  event,
+  formatDate,
+  formatTime,
+  isAllDayEvent,
+}: Props) {
+  const [summaryDialogOpen, setSummaryDialogOpen] = useState(false);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleDialogOpenChange = async (open: boolean) => {
+    setSummaryDialogOpen(open);
+    if (open && !summary) {
+      setLoading(true);
+
+      const result = await getSummary(event);
+      setSummary(result);
+
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <h3 className="font-semibold text-lg">{event.summary || "Untitled Event"}</h3>
-
-          {event.description && (
-            <p className="text-gray-600 mt-1 text-sm">
-              {event.description.length > 100
-                ? `${event.description.substring(0, 100)}...`
-                : event.description}
-            </p>
-          )}
-
-          <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-gray-500">
-            <div className="flex items-center gap-1">
-              <Clock className="w-4 h-4" />
-              {isAllDayEvent(event) ? (
-                <span>All day - {formatDate(event.start?.date)}</span>
-              ) : (
-                <span>
-                  {formatDate(event.start?.dateTime)} at {formatTime(event.start?.dateTime)}
-                  {event.end?.dateTime && ` - ${formatTime(event.end.dateTime)}`}
-                </span>
-              )}
-            </div>
-
-            {event.location && (
-              <div className="flex items-center gap-1">
-                <MapPin className="w-4 h-4" />
-                <span className="truncate max-w-xs">{event.location}</span>
-              </div>
-            )}
-
-            {event.attendees?.length ? (
-              <div className="flex items-center gap-1">
-                <Users className="w-4 h-4" />
-                <span>{event.attendees.length} attendees</span>
-              </div>
-            ) : null}
-          </div>
-
-          {event.htmlLink && (
-            <div className="mt-2">
-              <a
-                href={event.htmlLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-800 text-sm underline"
-              >
-                View in Google Calendar
-              </a>
-            </div>
-          )}
+    <div className="group border border-gray-200 rounded-xl p-6 hover:bg-gray-50 hover:shadow-md hover:border-gray-300 transition-all duration-200 bg-white">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <EventHeader event={event} />
+          <EventDescription description={event.description} />
+          <EventMeta
+            event={event}
+            formatDate={formatDate}
+            formatTime={formatTime}
+            isAllDayEvent={isAllDayEvent}
+          />
+          <EventActions
+            event={event}
+            summary={summary || "Failed to fetch summary"}
+            loading={loading}
+            open={summaryDialogOpen}
+            setOpen={handleDialogOpenChange}
+          />
         </div>
-
-        {event.status && (
-          <div className="ml-4">
-            <span
-              className={`px-2 py-1 rounded-full text-xs font-medium ${
-                event.status === "confirmed"
-                  ? "bg-green-100 text-green-800"
-                  : event.status === "tentative"
-                  ? "bg-yellow-100 text-yellow-800"
-                  : "bg-gray-100 text-gray-800"
-              }`}
-            >
-              {event.status}
-            </span>
-          </div>
-        )}
       </div>
     </div>
   );
