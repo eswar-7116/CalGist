@@ -40,3 +40,12 @@ export async function generateSummary(event: GCalEvent) {
 
   return summary;
 }
+
+export async function getEmbedding(contents: string) {
+  const { embeddings } = await ai.models.embedContent({
+    model: "text-embedding-004",
+    contents,
+  });
+
+  return embeddings![0].values;
+}

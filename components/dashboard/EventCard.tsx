@@ -20,12 +20,14 @@ async function getSummary(event: calendar_v3.Schema$Event) {
   try {
     const supabase = createClient();
 
+    // Fetch summary from database
     const { data, error } = await supabase
       .from("summaries")
       .select("summary")
       .eq("event_id", event.id)
       .single();
 
+    // If fetching summary failed
     if (error?.code === "PGRST116" && !data) {
       const {
         data: { user },
@@ -35,6 +37,7 @@ async function getSummary(event: calendar_v3.Schema$Event) {
         return null;
       }
 
+      // Generate a summary
       const response = await fetch("/api/gen-summary", {
         method: "POST",
         headers: {
@@ -42,18 +45,20 @@ async function getSummary(event: calendar_v3.Schema$Event) {
         },
         body: JSON.stringify({ event }),
       });
-      const { summary } = await response.json();
+      const { summary, embedding } = await response.json();
       if (!summary) {
         console.error("Summary generation failed");
         toast.error("Summary generation failed");
         return null;
       }
 
+      // Save the generated summary in database
       const { error } = await supabase.from("summaries").insert([
         {
           user_id: user.id,
           event_id: event.id,
           summary: summary,
+          embedding,
           created_at: new Date().toISOString(),
         },
       ]);
@@ -100,6 +105,7 @@ export function EventCard({
         return;
       }
 
+      // Generate new summary
       const response = await fetch("/api/gen-summary", {
         method: "POST",
         headers: {
@@ -108,15 +114,17 @@ export function EventCard({
         body: JSON.stringify({ event }),
       });
 
-      const { summary: newSummary } = await response.json();
+      const { summary: newSummary, embedding } = await response.json();
 
       if (!newSummary) {
         toast.error("Summary regeneration failed.");
         return;
       }
 
+      // Save the new summary in database
       const { error: saveErr } = await supabase.from("summaries").update({
         summary: newSummary,
+        embedding,
         created_at: new Date().toISOString(),
       }).eq("event_id", event.id);
 

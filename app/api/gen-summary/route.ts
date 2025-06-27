@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GCalEventSchema } from "@/validations/GCalEventSchema";
-import { generateSummary } from "@/lib/ai/actions";
+import { generateSummary, getEmbedding } from "@/lib/ai/actions";
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,7 +13,10 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: error.message }, { status: 400 });
 
     const summary = await generateSummary(data);
-    return NextResponse.json({ summary });
+
+    const embedding = await getEmbedding(summary!);
+
+    return NextResponse.json({ summary, embedding });
   } catch (error: any) {
     console.error("Error generating summary:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
