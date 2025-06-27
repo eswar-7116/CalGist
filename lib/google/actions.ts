@@ -6,7 +6,6 @@ import { createClient } from "../supabase/server";
 import { google } from "googleapis";
 
 export async function connectGoogleCalendar() {
-    console.log("Called")
     const oauth2Client = createOAuth2Client();
 
     const url = oauth2Client.generateAuthUrl({
